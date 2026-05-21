@@ -1,0 +1,885 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>TrustNity — Pickup-First Food App</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    background: #F0EDE8;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 2.5rem 1rem 3rem;
+  }
+  ::-webkit-scrollbar { width: 0; height: 0; }
+
+  /* ── Phone shell ── */
+  #phone {
+    width: 375px;
+    height: 780px;
+    background: #FAFAF8;
+    border-radius: 50px;
+    border: 10px solid #111;
+    box-shadow: 0 40px 100px rgba(0,0,0,0.25), inset 0 0 0 1px rgba(255,255,255,0.08);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+  }
+
+  /* ── Screens ── */
+  .screen {
+    display: none;
+    flex: 1;
+    flex-direction: column;
+    overflow: hidden;
+    animation: fadeIn 0.18s ease;
+  }
+  .screen.active { display: flex; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateX(12px); } to { opacity: 1; transform: translateX(0); } }
+
+  /* ── Status bar ── */
+  .statusbar {
+    padding: 12px 22px 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-shrink: 0;
+    background: transparent;
+  }
+  .statusbar .time { font-size: 12px; font-weight: 800; color: #111; }
+  .statusbar .icons { font-size: 11px; color: #444; }
+
+  /* ── Scrollable content ── */
+  .scroll-area { flex: 1; overflow-y: auto; }
+
+  /* ── HOME ── */
+  .home-header { padding: 6px 20px 10px; }
+  .brand { font-size: 20px; font-weight: 900; color: #0F6E56; letter-spacing: -0.6px; }
+  .location { font-size: 11px; color: #6B6965; margin-top: 2px; }
+  .location span { color: #0F6E56; }
+
+  .search-bar {
+    margin: 0 20px 12px;
+    background: #FFF;
+    border: 1.5px solid #DDD9D0;
+    border-radius: 12px;
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #B0ACA5;
+    font-size: 13px;
+  }
+
+  /* Hero card */
+  .hero-card {
+    margin: 0 20px 14px;
+    background: #0F6E56;
+    border-radius: 18px;
+    padding: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .hero-card .eyebrow { font-size: 10px; color: #9FE1CB; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; margin-bottom: 5px; }
+  .hero-card h2 { font-size: 17px; font-weight: 800; color: #FFF; line-height: 1.25; margin-bottom: 10px; }
+  .hero-pill { display: inline-flex; align-items: center; gap: 4px; background: rgba(255,255,255,0.15); border-radius: 20px; padding: 5px 11px; font-size: 10px; color: #FFF; font-weight: 600; }
+  .hero-emoji { font-size: 46px; }
+
+  /* Category chips */
+  .chips {
+    display: flex;
+    gap: 7px;
+    padding: 0 20px 14px;
+    overflow-x: auto;
+    flex-shrink: 0;
+  }
+  .chip {
+    white-space: nowrap;
+    border-radius: 20px;
+    padding: 6px 13px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    flex-shrink: 0;
+    border: 1.5px solid transparent;
+  }
+  .chip.active { background: #0F6E56; color: #FFF; border-color: #0F6E56; }
+  .chip.idle { background: #FFF; color: #333; border-color: #DDD9D0; }
+
+  /* Section label */
+  .section-label {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 20px 10px;
+  }
+  .section-label h3 { font-size: 15px; font-weight: 800; color: #111; }
+  .section-label a { font-size: 12px; color: #0F6E56; text-decoration: none; }
+
+  /* Restaurant card */
+  .r-card {
+    margin: 0 20px 10px;
+    background: #FFF;
+    border: 1.5px solid #DDD9D0;
+    border-radius: 16px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+  .r-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.1); }
+  .r-card:active { transform: scale(0.98); }
+
+  .r-card-hero {
+    height: 72px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 16px;
+  }
+  .r-card-hero .emoji { font-size: 40px; }
+  .r-card-badges { display: flex; flex-direction: column; gap: 4px; align-items: flex-end; }
+
+  .badge-verified { background: #0F6E56; color: #FFF; border-radius: 20px; padding: 3px 9px; font-size: 10px; font-weight: 700; }
+  .badge-fast { background: #FAEEDA; color: #854F0B; border-radius: 20px; padding: 3px 9px; font-size: 10px; font-weight: 600; border: 1px solid #EF9F27; }
+
+  .r-card-body { padding: 10px 16px 12px; }
+  .r-card-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 7px; }
+  .r-name { font-size: 14px; font-weight: 800; color: #111; margin-bottom: 2px; }
+  .r-sub { font-size: 11px; color: #6B6965; }
+  .r-rating { font-size: 12px; font-weight: 700; color: #111; }
+  .r-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .eta-pill { background: #E1F5EE; color: #0F6E56; border-radius: 6px; padding: 3px 8px; font-size: 10px; font-weight: 700; }
+  .queue-dot-wrap { display: flex; align-items: center; gap: 5px; }
+  .qdot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  .qdot.green { background: #1D9E75; }
+  .qdot.amber { background: #EF9F27; }
+  .qdot.red { background: #E24B4A; }
+  @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.3;} }
+  .qdot { animation: pulse 2s ease-in-out infinite; }
+  .q-label { font-size: 11px; color: #6B6965; }
+  .hygiene { font-size: 10px; color: #B0ACA5; margin-left: auto; }
+
+  /* Bottom nav */
+  .bottom-nav {
+    border-top: 1.5px solid #DDD9D0;
+    background: #FFF;
+    display: flex;
+    flex-shrink: 0;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .nav-tab {
+    flex: 1;
+    padding: 8px 0 6px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    cursor: pointer;
+  }
+  .nav-tab .n-icon { font-size: 18px; }
+  .nav-tab .n-label { font-size: 9px; color: #B0ACA5; font-weight: 600; }
+  .nav-tab.active .n-label { color: #0F6E56; }
+
+  /* ── RESTAURANT SCREEN ── */
+  .r-screen-hero {
+    height: 130px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    flex-shrink: 0;
+  }
+  .r-screen-hero .big-emoji { font-size: 72px; }
+  .back-btn {
+    position: absolute;
+    top: 14px; left: 16px;
+    width: 34px; height: 34px;
+    border-radius: 17px;
+    background: rgba(255,255,255,0.92);
+    border: 1px solid rgba(0,0,0,0.1);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; font-size: 16px; color: #111;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
+  .r-detail { padding: 14px 20px 0; }
+  .r-title { font-size: 21px; font-weight: 900; color: #111; margin-bottom: 2px; letter-spacing: -0.4px; }
+  .r-subtitle { font-size: 11px; color: #6B6965; margin-bottom: 11px; }
+  .tag-row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 13px; }
+  .tag { border-radius: 20px; padding: 4px 10px; font-size: 11px; font-weight: 600; }
+  .tag.green { background: #E1F5EE; color: #0F6E56; }
+  .tag.gray { background: #F1EFE8; color: #5F5E5A; }
+
+  /* Queue status card */
+  .queue-card {
+    background: #FFF;
+    border: 1.5px solid #DDD9D0;
+    border-radius: 14px;
+    padding: 12px 16px;
+    margin-bottom: 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .queue-card .label { font-size: 9px; color: #6B6965; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 5px; }
+  .queue-card .eta-big { font-size: 26px; font-weight: 900; color: #0F6E56; }
+  .queue-card .ready-label { font-size: 10px; color: #6B6965; margin-bottom: 2px; }
+
+  /* Trust grid */
+  .trust-grid { display: flex; gap: 8px; margin-bottom: 16px; }
+  .trust-tile {
+    flex: 1;
+    background: #F4F2EE;
+    border-radius: 12px;
+    padding: 9px 6px;
+    text-align: center;
+  }
+  .trust-tile .ticon { font-size: 18px; margin-bottom: 3px; }
+  .trust-tile .tlabel { font-size: 9px; color: #6B6965; line-height: 1.4; }
+
+  /* Menu section */
+  .menu-section-label { font-size: 15px; font-weight: 800; color: #111; margin-bottom: 10px; }
+  .menu-items { display: flex; flex-direction: column; gap: 9px; padding-bottom: 20px; }
+
+  .menu-item {
+    background: #FFF;
+    border: 1.5px solid #DDD9D0;
+    border-radius: 14px;
+    padding: 12px 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .mi-left { flex: 1; }
+  .mi-name { font-size: 13px; font-weight: 800; color: #111; margin-bottom: 2px; }
+  .mi-desc { font-size: 10px; color: #6B6965; margin-bottom: 3px; }
+  .mi-prep { font-size: 9px; color: #B0ACA5; }
+  .mi-right { text-align: right; margin-left: 14px; flex-shrink: 0; }
+  .mi-price { font-size: 15px; font-weight: 800; color: #111; margin-bottom: 8px; }
+  .add-btn {
+    background: #0F6E56;
+    color: #FFF;
+    border-radius: 20px;
+    padding: 6px 14px;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    border: none;
+    transition: background 0.15s, transform 0.1s;
+  }
+  .add-btn:hover { background: #0a5541; }
+  .add-btn:active { transform: scale(0.94); }
+
+  /* ── CHECKOUT ── */
+  .checkout-header {
+    padding: 12px 20px 10px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border-bottom: 1.5px solid #E8E4DF;
+    flex-shrink: 0;
+  }
+  .back-text { cursor: pointer; font-size: 20px; color: #111; }
+  .checkout-header h2 { font-size: 17px; font-weight: 900; color: #111; letter-spacing: -0.3px; }
+
+  .co-section {
+    background: #FFF;
+    border: 1.5px solid #DDD9D0;
+    border-radius: 16px;
+    padding: 14px;
+    margin: 0 20px 10px;
+  }
+  .co-from { font-size: 11px; color: #6B6965; margin-bottom: 2px; }
+  .co-name { font-size: 15px; font-weight: 800; color: #111; margin-bottom: 3px; }
+  .co-desc { font-size: 11px; color: #6B6965; margin-bottom: 9px; }
+  .co-ready-pill { display: inline-flex; align-items: center; background: #E1F5EE; border-radius: 7px; padding: 4px 10px; font-size: 10px; color: #0F6E56; font-weight: 700; }
+
+  /* Toggle */
+  .assist-section { background: #FFF; border: 1.5px solid #DDD9D0; border-radius: 16px; padding: 14px; margin: 0 20px 10px; }
+  .assist-row { display: flex; justify-content: space-between; align-items: center; }
+  .assist-text h4 { font-size: 14px; font-weight: 800; color: #111; margin-bottom: 2px; }
+  .assist-text p { font-size: 11px; color: #6B6965; }
+  .toggle-wrap {
+    width: 46px; height: 26px;
+    border-radius: 13px;
+    background: #B4B2A9;
+    position: relative;
+    cursor: pointer;
+    transition: background 0.2s;
+    flex-shrink: 0;
+  }
+  .toggle-wrap.on { background: #0F6E56; }
+  .toggle-thumb {
+    width: 20px; height: 20px;
+    border-radius: 10px;
+    background: #FFF;
+    position: absolute;
+    top: 3px; left: 3px;
+    transition: left 0.2s;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+  }
+  .toggle-wrap.on .toggle-thumb { left: 23px; }
+  .assist-note {
+    display: none;
+    background: #FAEEDA;
+    border-radius: 10px;
+    padding: 9px 11px;
+    margin-top: 10px;
+    font-size: 10px;
+    color: #854F0B;
+    line-height: 1.5;
+  }
+
+  /* Price breakdown */
+  .price-section { background: #FFF; border: 1.5px solid #DDD9D0; border-radius: 16px; padding: 14px; margin: 0 20px 10px; }
+  .price-section h4 { font-size: 14px; font-weight: 800; color: #111; margin-bottom: 12px; }
+  .price-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 9px; }
+  .price-row .pl { font-size: 13px; color: #6B6965; }
+  .price-row .pr { font-size: 13px; font-weight: 600; color: #111; }
+  .price-row.divider { border-top: 1.5px solid #EEE9E2; padding-top: 10px; margin-top: 5px; }
+  .price-row.divider .pl { font-size: 15px; font-weight: 800; color: #111; }
+  .price-row.divider .pr { font-size: 22px; font-weight: 900; color: #0F6E56; }
+  .helper-badge { font-size: 9px; color: #0F6E56; background: #E1F5EE; border-radius: 4px; padding: 1px 6px; margin-left: 5px; }
+  .no-hidden { font-size: 10px; color: #B0ACA5; text-align: center; margin-top: 9px; }
+
+  /* Confirm */
+  .confirm-btn {
+    margin: 0 20px 20px;
+    background: #0F6E56;
+    color: #FFF;
+    border-radius: 22px;
+    padding: 16px;
+    font-size: 15px;
+    font-weight: 800;
+    text-align: center;
+    cursor: pointer;
+    border: none;
+    width: calc(100% - 40px);
+    transition: background 0.15s, transform 0.1s;
+    letter-spacing: -0.2px;
+  }
+  .confirm-btn:hover { background: #0a5541; }
+  .confirm-btn:active { transform: scale(0.97); }
+
+  /* ── CONFIRMED ── */
+  #s-confirmed {
+    justify-content: center;
+    align-items: center;
+    padding: 0 30px;
+    background: #FAFAF8;
+  }
+  .confirmed-icon { font-size: 60px; margin-bottom: 14px; animation: popIn 0.4s cubic-bezier(0.34,1.56,0.64,1); }
+  @keyframes popIn { from{transform:scale(0)} to{transform:scale(1)} }
+  .confirmed-title { font-size: 22px; font-weight: 900; color: #111; text-align: center; margin-bottom: 6px; letter-spacing: -0.5px; }
+  .confirmed-sub { font-size: 13px; color: #6B6965; text-align: center; line-height: 1.6; margin-bottom: 22px; }
+  .confirmed-sub strong { color: #0F6E56; }
+  .pickup-box {
+    background: #E1F5EE;
+    border-radius: 14px;
+    padding: 14px 18px;
+    width: 100%;
+    margin-bottom: 24px;
+  }
+  .pickup-box .pb-label { font-size: 9px; color: #0F6E56; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 5px; }
+  .pickup-box p { font-size: 13px; color: #111; line-height: 1.55; }
+  .home-btn {
+    background: #0F6E56;
+    color: #FFF;
+    border-radius: 22px;
+    padding: 14px 36px;
+    font-size: 14px;
+    font-weight: 800;
+    cursor: pointer;
+    border: none;
+    transition: background 0.15s, transform 0.1s;
+  }
+  .home-btn:hover { background: #0a5541; }
+  .home-btn:active { transform: scale(0.97); }
+</style>
+</head>
+<body>
+
+<div id="phone">
+
+  <!-- ═══════════════ HOME ═══════════════ -->
+  <div id="s-home" class="screen active">
+    <div class="statusbar">
+      <span class="time">9:41</span>
+      <span class="icons">▮▮▮ ◀▶</span>
+    </div>
+    <div class="home-header">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <div class="brand">TrustNity</div>
+          <div class="location">📍 Kondapur, Hyderabad <span>▾</span></div>
+        </div>
+        <div style="width:34px;height:34px;border-radius:17px;background:#F1EFE8;display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;">🔔</div>
+      </div>
+    </div>
+    <div class="search-bar">
+      <span>🔍</span>
+      <span>Search verified kitchens near you...</span>
+    </div>
+    <div class="hero-card">
+      <div>
+        <div class="eyebrow">Ready Near You</div>
+        <h2>Pickup on your<br>route home</h2>
+        <div class="hero-pill">⚡ Fastest: 7 min</div>
+      </div>
+      <div class="hero-emoji">🛵</div>
+    </div>
+    <div class="chips">
+      <div class="chip active">⚡ Fast Pickup</div>
+      <div class="chip idle">🥗 Healthy</div>
+      <div class="chip idle">💼 Office</div>
+      <div class="chip idle">🥩 Mandi</div>
+      <div class="chip idle">👨‍👩‍👧 Family</div>
+    </div>
+    <div class="section-label">
+      <h3>Verified Kitchens</h3>
+      <a href="#">See all</a>
+    </div>
+    <div class="scroll-area" style="padding-bottom:8px">
+
+      <!-- Card 1 -->
+      <div class="r-card" data-id="0">
+        <div class="r-card-hero" style="background:#FAEEDA">
+          <span class="emoji">🍚</span>
+          <div class="r-card-badges">
+            <span class="badge-verified">✓ TrustNity Verified</span>
+            <span class="badge-fast">⚡ Fast Pickup</span>
+          </div>
+        </div>
+        <div class="r-card-body">
+          <div class="r-card-top">
+            <div>
+              <div class="r-name">Bawarchi Biryani</div>
+              <div class="r-sub">Biryani · Hyderabadi</div>
+            </div>
+            <div class="r-rating">⭐ 4.8</div>
+          </div>
+          <div class="r-meta">
+            <span class="eta-pill">⏱ 12 min</span>
+            <div class="queue-dot-wrap"><div class="qdot green"></div><span class="q-label">Short queue</span></div>
+            <span class="hygiene">Hygiene 96/100</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 2 -->
+      <div class="r-card" data-id="1">
+        <div class="r-card-hero" style="background:#E1F5EE">
+          <span class="emoji">🥩</span>
+          <div class="r-card-badges">
+            <span class="badge-verified">✓ TrustNity Verified</span>
+          </div>
+        </div>
+        <div class="r-card-body">
+          <div class="r-card-top">
+            <div>
+              <div class="r-name">Govardhan Mandi</div>
+              <div class="r-sub">Mandi · Arabic</div>
+            </div>
+            <div class="r-rating">⭐ 4.6</div>
+          </div>
+          <div class="r-meta">
+            <span class="eta-pill">⏱ 18 min</span>
+            <div class="queue-dot-wrap"><div class="qdot amber"></div><span class="q-label">Moderate</span></div>
+            <span class="hygiene">Hygiene 92/100</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 3 -->
+      <div class="r-card" data-id="2">
+        <div class="r-card-hero" style="background:#EAF3DE">
+          <span class="emoji">🍱</span>
+          <div class="r-card-badges">
+            <span class="badge-verified">✓ TrustNity Verified</span>
+            <span class="badge-fast">⚡ Fast Pickup</span>
+          </div>
+        </div>
+        <div class="r-card-body">
+          <div class="r-card-top">
+            <div>
+              /* Lines 510-512 omitted */
+            </div>
+            <div class="r-rating">⭐ 4.5</div>
+          </div>
+          <div class="r-meta">
+            <span class="eta-pill">⏱ 7 min</span>
+            <div class="queue-dot-wrap"><div class="qdot green"></div><span class="q-label">Short queue</span></div>
+            <span class="hygiene">Hygiene 98/100</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+    <div class="bottom-nav">
+      <div class="nav-tab active"><span class="n-icon">🏠</span><span class="n-label">Home</span></div>
+      <div class="nav-tab"><span class="n-icon">🔍</span><span class="n-label">Discover</span></div>
+      <div class="nav-tab"><span class="n-icon">📋</span><span class="n-label">Orders</span></div>
+      <div class="nav-tab"><span class="n-icon">👤</span><span class="n-label">Profile</span></div>
+    </div>
+  </div>
+
+  <!-- ═══════════════ RESTAURANT 0 — Bawarchi ═══════════════ -->
+  <div id="s-r0" class="screen">
+    <div class="r-screen-hero" style="background:#FAEEDA">
+      <span class="big-emoji">🍚</span>
+      <div class="back-btn" data-go="s-home">←</div>
+    </div>
+    <div class="scroll-area">
+      <div class="r-detail">
+        <div class="r-title">Bawarchi Biryani</div>
+        <div class="r-subtitle">Biryani · Hyderabadi · ⭐ 4.8 (1,240 reviews)</div>
+        <div class="tag-row">
+          <span class="tag green">✓ Verified Kitchen</span>
+          <span class="tag gray">FSSAI Licensed</span>
+          <span class="tag gray">Hygiene 96/100</span>
+        </div>
+        <div class="queue-card">
+          <div>
+            <div class="label">Live Queue Status</div>
+            <div class="queue-dot-wrap"><div class="qdot green"></div><span class="q-label">Short queue</span></div>
+          </div>
+          <div style="text-align:right">
+            <div class="ready-label">Pickup ready in</div>
+            <div class="eta-big">12 min</div>
+          </div>
+        </div>
+        <div class="trust-grid">
+          <div class="trust-tile"><div class="ticon">🔬</div><div class="tlabel">Hygiene verified</div></div>
+          <div class="trust-tile"><div class="ticon">📸</div><div class="tlabel">Kitchen photos</div></div>
+          <div class="trust-tile"><div class="ticon">🛡️</div><div class="tlabel">Audit: 2 weeks</div></div>
+        </div>
+        <div class="menu-section-label">Menu</div>
+        <div class="menu-items">
+          <div class="menu-item">
+            <div class="mi-left">
+              /* Lines 566-569 omitted */
+            </div>
+            <div class="mi-right">
+              /* Lines 571-573 omitted */
+            </div>
+          </div>
+          <div class="menu-item">
+            <div class="mi-left">
+              /* Lines 577-580 omitted */
+            </div>
+            <div class="mi-right">
+              /* Lines 582-584 omitted */
+            </div>
+          </div>
+          <div class="menu-item">
+            <div class="mi-left">
+              /* Lines 588-591 omitted */
+            </div>
+            <div class="mi-right">
+              /* Lines 593-595 omitted */
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════ RESTAURANT 1 — Govardhan ═══════════════ -->
+  <div id="s-r1" class="screen">
+    <div class="r-screen-hero" style="background:#E1F5EE">
+      <span class="big-emoji">🥩</span>
+      <div class="back-btn" data-go="s-home">←</div>
+    </div>
+    <div class="scroll-area">
+      <div class="r-detail">
+        <div class="r-title">Govardhan Mandi</div>
+        <div class="r-subtitle">Mandi · Arabic · ⭐ 4.6 (876 reviews)</div>
+        <div class="tag-row">
+          <span class="tag green">✓ Verified Kitchen</span>
+          <span class="tag gray">FSSAI Licensed</span>
+          <span class="tag gray">Hygiene 92/100</span>
+        </div>
+        <div class="queue-card">
+          <div>
+            <div class="label">Live Queue Status</div>
+            <div class="queue-dot-wrap"><div class="qdot amber"></div><span class="q-label">Moderate</span></div>
+          </div>
+          <div style="text-align:right">
+            <div class="ready-label">Pickup ready in</div>
+            <div class="eta-big">18 min</div>
+          </div>
+        </div>
+        <div class="trust-grid">
+          <div class="trust-tile"><div class="ticon">🔬</div><div class="tlabel">Hygiene verified</div></div>
+          <div class="trust-tile"><div class="ticon">📸</div><div class="tlabel">Kitchen photos</div></div>
+          <div class="trust-tile"><div class="ticon">🛡️</div><div class="tlabel">Audit: 3 weeks</div></div>
+        </div>
+        <div class="menu-section-label">Menu</div>
+        <div class="menu-items">
+          <div class="menu-item">
+            <div class="mi-left">
+              /* Lines 636-639 omitted */
+            </div>
+            <div class="mi-right">
+              /* Lines 641-643 omitted */
+            </div>
+          </div>
+          <div class="menu-item">
+            <div class="mi-left">
+              /* Lines 647-650 omitted */
+            </div>
+            <div class="mi-right">
+              /* Lines 652-654 omitted */
+            </div>
+          </div>
+          <div class="menu-item">
+            <div class="mi-left">
+              /* Lines 658-661 omitted */
+            </div>
+            <div class="mi-right">
+              /* Lines 663-665 omitted */
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════ RESTAURANT 2 — Thali House ═══════════════ -->
+  <div id="s-r2" class="screen">
+    <div class="r-screen-hero" style="background:#EAF3DE">
+      <span class="big-emoji">🍱</span>
+      <div class="back-btn" data-go="s-home">←</div>
+    </div>
+    <div class="scroll-area">
+      <div class="r-detail">
+        <div class="r-title">Thali House</div>
+        <div class="r-subtitle">Thali · Multi-cuisine · ⭐ 4.5 (2,100 reviews)</div>
+        <div class="tag-row">
+          <span class="tag green">✓ Verified Kitchen</span>
+          <span class="tag gray">FSSAI Licensed</span>
+          <span class="tag gray">Hygiene 98/100</span>
+        </div>
+        <div class="queue-card">
+          <div>
+            <div class="label">Live Queue Status</div>
+            <div class="queue-dot-wrap"><div class="qdot green"></div><span class="q-label">Short queue</span></div>
+          </div>
+          <div style="text-align:right">
+            <div class="ready-label">Pickup ready in</div>
+            <div class="eta-big">7 min</div>
+          </div>
+        </div>
+        <div class="trust-grid">
+          <div class="trust-tile"><div class="ticon">🔬</div><div class="tlabel">Hygiene verified</div></div>
+          <div class="trust-tile"><div class="ticon">📸</div><div class="tlabel">Kitchen photos</div></div>
+          <div class="trust-tile"><div class="ticon">🛡️</div><div class="tlabel">Audit: 1 week</div></div>
+        </div>
+        <div class="menu-section-label">Menu</div>
+        <div class="menu-items">
+          <div class="menu-item">
+            <div class="mi-left">
+              /* Lines 706-709 omitted */
+            </div>
+            <div class="mi-right">
+              /* Lines 711-713 omitted */
+            </div>
+          </div>
+          <div class="menu-item">
+            <div class="mi-left">
+              /* Lines 717-720 omitted */
+            </div>
+            <div class="mi-right">
+              /* Lines 722-724 omitted */
+            </div>
+          </div>
+          <div class="menu-item">
+            <div class="mi-left">
+              /* Lines 728-731 omitted */
+            </div>
+            <div class="mi-right">
+              /* Lines 733-735 omitted */
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════ CHECKOUT ═══════════════ -->
+  <div id="s-checkout" class="screen">
+    <div class="checkout-header">
+      <span class="back-text" id="co-back">←</span>
+      <h2>Checkout</h2>
+    </div>
+    <div class="scroll-area">
+      <div style="height:10px"></div>
+
+      <!-- Item summary -->
+      <div class="co-section">
+        <div class="co-from" id="co-from">From Bawarchi Biryani</div>
+        <div class="co-name" id="co-item-name">Hyderabadi Dum Biryani</div>
+        <div class="co-desc" id="co-item-desc">Slow-cooked dum biryani with saffron rice</div>
+        <span class="co-ready-pill" id="co-ready">⏱ Ready in 8 min</span>
+      </div>
+
+      <!-- TrustAssist toggle -->
+      <div class="assist-section">
+        <div class="assist-row">
+          <div class="assist-text">
+            <h4>TrustAssist</h4>
+            <p>A nearby helper picks up for you</p>
+          </div>
+          <div class="toggle-wrap" id="toggle">
+            <div class="toggle-thumb"></div>
+          </div>
+        </div>
+        <div class="assist-note" id="assist-note">
+          A TrustAssist Partner will collect your order from the kitchen counter.
+          Full transparency — no hidden platform stacking on top of helper fees.
+          Your helper's compensation is shown separately below.
+        </div>
+      </div>
+
+      <!-- Price breakdown -->
+      <div class="price-section">
+        <h4>Price Breakdown</h4>
+        <div class="price-row"><span class="pl">Food Total</span><span class="pr" id="pr-food">₹220</span></div>
+        <div class="price-row"><span class="pl">Platform Service</span><span class="pr">₹5</span></div>
+        <div id="pr-assist-rows" style="display:none">
+          <div class="price-row"><span class="pl">TrustAssist Helper</span><span class="pr">₹24</span></div>
+          <div class="price-row">
+            <span class="pl">Rain Support Bonus<span class="helper-badge">100% to helper</span></span>
+            <span class="pr">₹12</span>
+          </div>
+        </div>
+        <div class="price-row divider">
+          <span class="pl">Total</span>
+          <span class="pr" id="pr-total">₹225</span>
+        </div>
+        <div class="no-hidden">No hidden charges. What you see is what you pay.</div>
+      </div>
+
+      <button class="confirm-btn" id="confirm-btn">Confirm Quick Pickup — ₹225</button>
+    </div>
+  </div>
+
+  <!-- ═══════════════ CONFIRMED ═══════════════ -->
+  <div id="s-confirmed" class="screen">
+    <div class="confirmed-icon">✅</div>
+    <div class="confirmed-title">Order Confirmed!</div>
+    <div class="confirmed-sub" id="cf-sub">Your order will be ready in <strong>8 min</strong></div>
+    <div class="pickup-box">
+      <div class="pb-label">Pickup Instructions</div>
+      <p>Head to the counter and show this screen. Skip the line — your food is prepaid and ready to go.</p>
+    </div>
+    <button class="home-btn" id="home-btn">Back to Home</button>
+  </div>
+
+</div><!-- /phone -->
+
+<script>
+const DATA = [
+  { name: "Bawarchi Biryani", menu: [
+    { name: "Hyderabadi Dum Biryani", price: 220, prep: 8,  desc: "Slow-cooked dum biryani with saffron rice" },
+    { name: "Chicken 65 + Rice",       price: 180, prep: 6,  desc: "Crispy Andhra chicken with steamed rice" },
+    { name: "Mirchi Biryani (Veg)",    price: 150, prep: 7,  desc: "Spiced vegetable biryani, medium heat" }
+  ]},
+  { name: "Govardhan Mandi", menu: [
+    { name: "Mutton Mandi Full",  price: 380, prep: 15, desc: "Slow-roasted mutton on fragrant yellow rice" },
+    { name: "Chicken Mandi Half", price: 320, prep: 12, desc: "Tender smoked chicken on white rice" },
+    { name: "Lamb Kabsa",         price: 360, prep: 18, desc: "Arabic-style spiced lamb over saffron rice" }
+  ]},
+  { name: "Thali House", menu: [
+    { name: "Andhra Thali",      price: 160, prep: 5, desc: "Rice, dal, two sabzis, papad, pickle, curd" },
+    { name: "North Indian Thali",price: 180, prep: 6, desc: "Roti, paneer, dal makhani, salad" },
+    { name: "Mini Tiffin Box",   price: 120, prep: 4, desc: "Light meal for one — rice, curry, sweet" }
+  ]}
+];
+
+let assistOn   = false;
+let curFood    = 220;
+let curPrep    = 8;
+let curRestIdx = 0;
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+// Home restaurant cards
+document.querySelectorAll('.r-card').forEach(el => {
+  el.addEventListener('click', () => showScreen('s-r' + el.dataset.id));
+});
+
+// Back buttons (in restaurant screens)
+document.querySelectorAll('.back-btn').forEach(el => {
+  el.addEventListener('click', e => { e.stopPropagation(); showScreen(el.dataset.go); });
+});
+
+// Add to checkout
+document.querySelectorAll('.add-btn').forEach(btn => {
+  btn.addEventListener('click', e => {
+    e.stopPropagation();
+    const ri   = parseInt(btn.dataset.rest);
+    const ii   = parseInt(btn.dataset.item);
+    const rest = DATA[ri];
+    const item = rest.menu[ii];
+    curRestIdx = ri;
+    curFood    = item.price;
+    curPrep    = item.prep;
+    assistOn   = false;
+
+    // Reset toggle state
+    const tog = document.getElementById('toggle');
+    tog.classList.remove('on');
+    document.getElementById('assist-note').style.display    = 'none';
+    document.getElementById('pr-assist-rows').style.display = 'none';
+
+    // Populate checkout
+    document.getElementById('co-from').textContent      = 'From ' + rest.name;
+    document.getElementById('co-item-name').textContent = item.name;
+    document.getElementById('co-item-desc').textContent = item.desc;
+    document.getElementById('co-ready').textContent     = '⏱ Ready in ' + item.prep + ' min';
+    document.getElementById('pr-food').textContent      = '₹' + item.price;
+    updateTotal();
+    showScreen('s-checkout');
+  });
+});
+
+// Checkout back
+document.getElementById('co-back').addEventListener('click', () => showScreen('s-r' + curRestIdx));
+
+// TrustAssist toggle
+document.getElementById('toggle').addEventListener('click', () => {
+  assistOn = !assistOn;
+  const tog = document.getElementById('toggle');
+  assistOn ? tog.classList.add('on') : tog.classList.remove('on');
+  document.getElementById('assist-note').style.display    = assistOn ? 'block' : 'none';
+  document.getElementById('pr-assist-rows').style.display = assistOn ? 'block' : 'none';
+  updateTotal();
+});
+
+function updateTotal() {
+  const total = curFood + 5 + (assistOn ? 36 : 0);
+  document.getElementById('pr-total').textContent      = '₹' + total;
+  document.getElementById('confirm-btn').textContent   = 'Confirm Quick Pickup — ₹' + total;
+}
+
+// Confirm order
+document.getElementById('confirm-btn').addEventListener('click', () => {
+  document.getElementById('cf-sub').innerHTML =
+    'Your order will be ready in <strong>' + curPrep + ' min</strong>';
+  showScreen('s-confirmed');
+});
+
+// Back to home from confirmed
+document.getElementById('home-btn').addEventListener('click', () => showScreen('s-home'));
+</script>
+</body>
+</html>
